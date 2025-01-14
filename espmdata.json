@@ -11,8 +11,8 @@
   ],
   "execute":
   [
-    "chmod +x spkg.py",
-    "sudo mv spkg.py /usr/local/bin/spkg"
+    "chmod +x €PATH/spkg.py",
+    "sudo mv €PATH/spkg.py /usr/local/bin/spkg"
   ],
   "dependencies": []
 }
