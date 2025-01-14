@@ -3,7 +3,8 @@ On Linux and MacOS, you need to follow these steps:
   2. Place the file in whatever folder you want
   3. Navigate to that directory with the terminal
   4. Execute these commands
-     > chmod +x main.py
+     > chmod +x spkg.py
+     > 
      > sudo mv spkg.py /usr/local/bin/spkg
   5. Test it with this command
      > spkg version
@@ -16,5 +17,5 @@ On Windows:
      > @echo off
      >
      > 
-     > python "C:\path\to\main.py" %*
+     > python "C:\path\to\spkg.py" %*
   4. Move the spkg.bat file to a Windows directory (like C:\windows or C:\windows\system32)
