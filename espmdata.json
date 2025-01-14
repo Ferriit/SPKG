@@ -5,9 +5,8 @@
   "developer": "EdgeSoft",
   "compilecommand": "",
   "compiler": "",
-  "files": [
-    "spkg.py",
-    "README.md"
+  "delfiles": [
+    "espmdata.json"
   ],
   "execute":
   [
