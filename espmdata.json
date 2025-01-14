@@ -1,10 +1,10 @@
 {
   "language": "python",
-  "compile": true,
+  "compile": false,
   "version": "0.1.1",
   "developer": "EdgeSoft",
-  "compilepath": "spkg.py",
-  "compiler": "pyinstaller",
+  "compilepath": "",
+  "compiler": "",
   "files": [
     "spkg.py",
     "README.md"
