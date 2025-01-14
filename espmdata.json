@@ -3,5 +3,16 @@
   "compile": true,
   "version": "0.1.1",
   "developer": "EdgeSoft",
+  "compilepath": "spkg.py",
+  "compiler": "pyinstaller",
+  "files": [
+    "spkg.py",
+    "README.md"
+  ],
+  "execute":
+  [
+    "chmod +x spkg.py",
+    "sudo mv spkg.py /usr/local/bin/spkg"
+  ]
   "dependencies": []
 }
