@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# TODO: Add install option for chocolatey and mmake spkg reload also load the installed packages
+# TODO: Add install option for chocolatey
 
 
 import subprocess as sub
@@ -8,6 +8,52 @@ import json
 import os
 import sys
 import time
+
+
+def getpackages(package_manager, output):
+    native_json_managers = {
+        "dnf", "pacman", "flatpak", "snap", "homebrew", "winget", "chocolatey", "scoop",
+        "npm", "pip", "gem", "conda", "yarn", "composer", "spack", "guix", "zypper"
+    }
+
+    packages = set()
+
+    try:
+        if package_manager in native_json_managers:
+            data = json.loads(output)
+            if isinstance(data, list):
+                for item in data:
+                    if "name" in item:
+                        package_name = item["name"]
+                        package_name = package_name.split("/")[0]
+                        packages.add(package_name)
+            elif isinstance(data, dict):
+                for package in data.keys():
+                    package_name = package.split("/")[0]
+                    packages.add(package_name)
+        else:
+            for line in output.strip().splitlines():
+                line = line.strip()
+                if not line or line.startswith("Listing") or line.startswith("Done"):
+                    continue
+                columns = line.split()
+                if columns:
+                    package_name = columns[0].split("/")[0]
+                    packages.add(package_name)
+
+    except Exception as e:
+        if os.name == "posix":
+            managers = open(f"{os.path.expanduser("~")}/spkg/managers.json", "r").read()
+        elif os.name == "nt":
+            managers = open(f"{os.getenv("APPDATA")}/spkg/managers.json", "r").read()
+        
+        if str(e).startswith("Expecting value:"):
+            return {} # Package manager either isn't installed or hasn't been used to install anything yet
+        
+        print(f"Error processing output for {package_manager}: {e}")
+
+    return list(packages)
+
 
 def findmanagers():
     commands = {
@@ -36,13 +82,40 @@ def findmanagers():
         "portage": "emerge --version"
     }
 
+    list_commands = {
+        "apt": "apt list --installed",
+        "dnf": "dnf list installed",
+        "pacman": "pacman -Q",
+        "flatpak": "flatpak list",
+        "snap": "snap list",
+        "homebrew": "brew list",
+        "winget": "winget list",
+        "chocolatey": "choco list --local-only",
+        "scoop": "scoop list",
+        "npm": "npm list -g --depth=0",
+        "pip": "pip list",
+        "gem": "gem list",
+        "conda": "conda list",
+        "cargo": "cargo install --list",
+        "yarn": "yarn global list",
+        "composer": "composer global show",
+        "brewcask": "brew list --cask",
+        "maven": "mvn dependency:tree",  # Maven doesn't directly list installed packages
+        "spack": "spack find",
+        "guix": "guix package --list-installed",
+        "slackpkg": "slackpkg search installed",
+        "zypper": "zypper se --installed-only",
+        "portage": "qlist -I"
+    }
+
     packagemanagers = list(commands.keys())
 
     packages = {}
 
     for i in packagemanagers:
-        print(f"\033[0mChecking for \033[34;1m{i[0].upper() + i[1:].lower()}")
+        print(f"\033[0mChecking for \033[34;1m{i[0].upper() + i[1:].lower()} ", end="")
         packages[i] = sub.run([commands[i]], shell=True, capture_output=True, text=True).stdout != ""
+        print({True: "\033[32;1mFound", False: "\033[31;1mNot Found"}[packages[i]])
 
     installed = []
 
@@ -50,7 +123,7 @@ def findmanagers():
         if packages[i]:
             installed.append(i)
     
-    print(f"\033[22mFound \033[1m{len(installed)} package managers\033[22m (searched through \033[1m{len(packagemanagers)} package managers\033[22m)\033[0m")
+    print(f"\033[0mFound \033[1m{len(installed)} package managers\033[22m (searched through \033[1m{len(packagemanagers)} package managers\033[22m)\033[0m")
 
     if not packages["flatpak"]:
         if {"y": True, "n": False}[input("Flatpak was not found. Do you want to install it? (y/n) :  ")[0].lower()]:
@@ -58,11 +131,43 @@ def findmanagers():
 
 
     if os.name == "posix":
-        open(f"/home/{os.getlogin()}/spkg/managers.json", "w").write(json.dumps({"packages": packages, "installed": installed}, indent=True))
+        try:
+            open(f"{os.path.expanduser("~")}/spkg/managers.json", "w").write(json.dumps({"packages": packages, "installed": installed}, indent=True))
+        except FileNotFoundError:
+            os.system(f"sudo mkdir {os.path.expanduser("~")}/spkg")
+            open(f"{os.path.expanduser("~")}/spkg/managers.json", "w").write(json.dumps({"packages": packages, "installed": installed}, indent=True))
     elif os.name == "nt":
-        open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "w").write(json.dumps({"packages": packages, "installed": installed}, indent=True))
+        open(f"{os.getenv("APPDATA")}/spkg/managers.json", "w").write(json.dumps({"packages": packages, "installed": installed}, indent=True))
     
+    print("\nChecking for installed packages")
+    installedpackages = {}
+    
+    managers = list(commands.keys())
+
+    packageamount = 0
+
+    for manager in managers:
+        out = sub.run([list_commands[manager]], shell=True, capture_output=True, text=True)
+        installedpackages[manager] = getpackages(manager, out.stdout)
+        packageamount += len(installedpackages[manager])
+
+    reordered = {}
+
+    for manager in list(installedpackages.keys()):
+        for package in installedpackages[manager]:
+            reordered[package] = manager
+
+    print(f"Found \033[1m{packageamount} packages\033[0m")
+
+    installedpackages["amount"] = packageamount
+
+    if os.name == "posix":
+        open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write(json.dumps(reordered, indent=True))
+    elif os.name == "nt":
+        open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write(json.dumps(reordered, indent=True))
+
     return [packages, installed]
+
 
 
 def searchpackage(package):
@@ -92,10 +197,20 @@ def searchpackage(package):
         "portage": "emerge --search "
     }
 
-    if os.name == "posix":
-        packagemanagers = json.loads(open(f"/home/{os.getlogin()}/spkg/managers.json", "r").read())
-    elif os.name == "nt":
-        packagemanagers = json.loads(open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "r").read())
+    try:
+        if os.name == "posix":
+            packagemanagers = json.loads(open(f"{os.path.expanduser("~")}/spkg/managers.json", "r").read())
+        elif os.name == "nt":
+            packagemanagers = json.loads(open(f"{os.getenv("APPDATA")}/spkg/managers.json", "r").read())
+
+    except FileNotFoundError:
+        print("\033[33;1mWarning:\033[0m Package Manager tracking file not found, creating new one and reloading Package Managers.")
+        findmanagers()
+        if os.name == "posix":
+            packagemanagers = json.loads(open(f"{os.path.expanduser("~")}/spkg/managers.json", "r").read())
+        elif os.name == "nt":
+            packagemanagers = json.loads(open(f"{os.getenv("APPDATA")}/spkg/managers.json", "r").read())
+
 
     results = []
 
@@ -112,10 +227,23 @@ def searchpackage(package):
 
 
 def installpackage(package):
-    if os.name == "posix":
-        installedpackages = json.loads(open(f"/home/{os.getlogin()}/spkg/installed.json", "r").read())
-    elif os.name == "nt":
-        installedpackages = json.loads(open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "r").read())
+    try:
+        if os.name == "posix":
+            installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
+        elif os.name == "nt":
+            installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
+
+    except FileNotFoundError:
+        print("\033[33;1mWarning:\033[0m Installation tracking file not found, creating new one.")
+        if os.name == "posix":
+            open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write("{}")
+        elif os.name == "nt":
+            open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write("{}")
+        
+        if os.name == "posix":
+            installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
+        elif os.name == "nt":
+            installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
     if package in list(installedpackages.keys()):
         installedwith = installedpackages[package]
@@ -171,23 +299,23 @@ def installpackage(package):
 
     if os.name == "posix":
         try:
-            installedpackages = json.loads(open(f"/home/{os.getlogin()}/spkg/installed.json", "r").read())
+            installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
         except FileNotFoundError:
-            open(f"/home/{os.getlogin()}/spkg/installed.json", "w").write("{}")
-            installedpackages = json.loads(open(f"/home/{os.getlogin()}/spkg/installed.json", "r").read())
+            open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write("{}")
+            installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
     elif os.name == "nt":
         try:
-            installedpackages = json.loads(open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "r").read())
+            installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
         except FileNotFoundError:
-            open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "w").write("{}")
-            installedpackages = json.loads(open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "r").read())
+            open(f"{os.getenv("APPDATA")}/spkg/managers.json", "w").write("{}")
+            installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
     installedpackages[package] = available[choice]
 
     if os.name == "posix":
-        open(f"/home/{os.getlogin()}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
     elif os.name == "nt":
-        open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
 
 def removepackage(package):
     commands = {
@@ -217,9 +345,9 @@ def removepackage(package):
     }
 
     if os.name == "posix":
-        installedpackages = json.loads(open(f"/home/{os.getlogin()}/spkg/installed.json", "r").read())
+        installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
     elif os.name == "nt":
-        installedpackages = json.loads(open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "r").read())
+        installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
     try:
         packagemanager = installedpackages[package]
@@ -230,9 +358,9 @@ def removepackage(package):
     del installedpackages[package]
 
     if os.name == "posix":
-        open(f"/home/{os.getlogin()}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
     elif os.name == "nt":
-        open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
     
     os.system(commands[packagemanager] + package)
 
@@ -274,9 +402,9 @@ def flagstopackage(flags: list[str]):
         result.append(packageflags[i])
         if i == "-installed":
             if os.name == "posix":
-                packagemanagers = json.loads(open(f"/home/{os.getlogin()}/spkg/managers.json", "r").read())
+                packagemanagers = json.loads(open(f"{os.path.expanduser("~")}/spkg/managers.json", "r").read())
             elif os.name == "nt":
-                packagemanagers = json.loads(open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "r").read())
+                packagemanagers = json.loads(open(f"{os.getenv("APPDATA")}/spkg/managers.json", "r").read())
 
             result = packagemanagers["installed"]
             break
@@ -329,9 +457,9 @@ def update(packagemanagerflags: list[str]):
 
 def show(package):
     if os.name == "posix":
-        installedpackages = json.loads(open(f"/home/{os.getlogin()}/spkg/installed.json", "r").read())
+        installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
     elif os.name == "nt":
-        installedpackages = json.loads(open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "r").read())
+        installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
     commands = {
         "apt": "apt show ",
@@ -371,9 +499,9 @@ def show(package):
 
 def detach(packages: list[str]):
     if os.name == "posix":
-        installedpackages = json.loads(open(f"/home/{os.getlogin()}/spkg/installed.json", "r").read())
+        installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
     elif os.name == "nt":
-        installedpackages = json.loads(open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "r").read())
+        installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
     out = ""
     for i in packages:
@@ -393,24 +521,24 @@ def detach(packages: list[str]):
         sys.exit()
 
     if os.name == "posix":
-        open(f"/home/{os.getlogin()}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
     elif os.name == "nt":
-        open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
 
 
 def attach(packages: list[str], manager: str):
     if os.name == "posix":
-        installedpackages = json.loads(open(f"/home/{os.getlogin()}/spkg/installed.json", "r").read())
+        installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
     elif os.name == "nt":
-        installedpackages = json.loads(open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "r").read())
+        installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
     for i in packages:
         installedpackages[i] = flagstopackage([manager])[0]
 
     if os.name == "posix":
-        open(f"/home/{os.getlogin()}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
     elif os.name == "nt":
-        open(f"C:\\users\\{os.getlogin()}\\spkg\\managers.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
 
 
     out = ""
@@ -422,11 +550,8 @@ def attach(packages: list[str], manager: str):
 
 
 if __name__ == "__main__":
-    #findmanagers()
-    #removepackage("golang")
-
     global version
-    version = "0.1.0"
+    version = "0.1.1"
     try:
         args = sys.argv[1:]
 
@@ -464,27 +589,27 @@ if __name__ == "__main__":
 
         elif args[0] == "attach":
             attach(args[1:-1], args[-1])
- 
+
         elif args[0] == "help":
             print("""SPKG (Searching Package Manager) is a tool to help you manage your package managers. It offers regular commands, such as:
 
-install: Installs a package. Requires sudo privileges and a package name:
+install: Installs a package. Requires sudo privileges on Unix and admin on Windows. Requires a package name:
     > sudo spkg install <package>
 
     When executed, install will look through all your package managers to try to find a match and then ask you which one to install.
 
 
-uninstall: Uninstalls a package. Requires sudo privileges and package name:
+uninstall: Uninstalls a package. Requires sudo privileges on Unix and admin on Windows. Requires a package name.
     > sudo spkg uninstall <package>
 
     When executed, uninstall will delete the package with the correct package manager for you
 
 
-search: Searches through all package managers to find a match for you
-    > spkg search <package>
+search: Searches through all package managers to find a match for you. Requires sudo privileges on Unix
+    > sudo spkg search <package>
 
 
-reload: Updates the list of known package managers. Required sudo privileges and has to be run on install of SPKG or any other package managers.
+reload: Updates the list of known package managers. Required sudo privileges on Unix. Has to be run on install of SPKG or any other package managers.
     > sudo spkg reload
 
 
@@ -492,7 +617,7 @@ version: Prints the version of SPKG you're using.
     > spkg version
 
 
-update: Updates the packages you specify with flags. Requires sudo privileges.
+update: Updates the packages you specify with flags. Requires sudo privileges and admin privileges on Windows.
     > sudo spkg update <flags>
 
     Flags:
@@ -523,19 +648,21 @@ update: Updates the packages you specify with flags. Requires sudo privileges.
         -portage: Updates Portage
 
 
-show: Shows an installed package with the correct Package Manager.
-    > spkg show <package>
+show: Shows an installed package with the correct Package Manager. Requires sudo privileges on Unix
+    > sudo spkg show <package>
 
 
-detach: Makes SPKG forget a package (it gets removed from the installed.json file, meaning that SPKG won't hinder you from installing stuff). Requires sudo privileges. Can take multiple packages.
+detach: Makes SPKG forget a package (it gets removed from the installed.json file, meaning that SPKG won't hinder you from installing stuff). Requires sudo privileges on Unix. Can take multiple packages.
     > sudo spkg detach <package>
 
 
-attack: Attached a package to the installed.json file to show SPKG that it's installed. Requires sudo privileges. Can take multiple packages.
+attach: Attaches a package to the installed.json file to show SPKG that it's installed. Requires sudo privileges on Unix. Can take multiple packages.
     > sudo spkg attach <package> <package-manager>
 
 
 help: Prints a help message.
+
+The reason all commands (except help) require sudo privileges is because the necessary data is in the /root folder. If you're on Windows, you don't need to use sudo.
             """)
     except IndexError:
-        print("\033[31;1mError: \033[0mNot enough arguments given")
+        print("\033[31;1mError: \033[0mNot enough arguments given. Help command is \"spkg help\"")
