@@ -13,5 +13,6 @@
     "chmod +x spkg.py",
     "sudo mv spkg.py /usr/local/bin/spkg"
   ],
-  "dependencies": []
+  "dependencies": [],
+  "description": "SPKG is a Manager for your Package Managers. It helps with installation, uninstallation and searching for packages"
 }
