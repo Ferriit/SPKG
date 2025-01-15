@@ -5,6 +5,9 @@
   "developer": "EdgeSoft",
   "compilecommand": "",
   "compiler": "",
+  "languageinstallcommands": [
+    ""
+  ],
   "delfiles": [
     "espmdata.json"
   ],
