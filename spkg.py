@@ -143,13 +143,14 @@ def findmanagers():
                 os.system(f"sudo mv ESPM espm")
                 os.chdir(f"espm/")
 
-                commands = [
+                installcommands = [
                     "chmod +x espm.py",
                     "sudo mv espm.py /usr/local/bin/espm",
-                    "sudo chmod +x /usr/local/bin/espm"
+                    "sudo chmod +x /usr/local/bin/espm",
+                    "sudo espm reinstall -skip spkg && sudo spkg reload"
                 ]
 
-                for i in commands:
+                for i in installcommands:
                     os.system(i)
 
     if os.name == "posix":
@@ -303,7 +304,7 @@ def installpackage(package):
         "slackpkg": "slackpkg install ",
         "zypper": "sudo zypper install ",
         "portage": "sudo emerge ",
-        "espm": "sudo espm install "
+        "espm": "sudo espm install -skip "
     }
 
     print(f"Please choose a package manager to install \"{package}\" with")
