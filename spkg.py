@@ -79,7 +79,8 @@ def findmanagers():
         "guix": "guix --version",
         "slackpkg": "slackpkg --version",
         "zypper": "zypper --version",
-        "portage": "emerge --version"
+        "portage": "emerge --version",
+        "espm": "sudo espm version"
     }
 
     list_commands = {
@@ -105,7 +106,8 @@ def findmanagers():
         "guix": "guix package --list-installed",
         "slackpkg": "slackpkg search installed",
         "zypper": "zypper se --installed-only",
-        "portage": "qlist -I"
+        "portage": "qlist -I",
+        "espm": "sudo espm list -json"
     }
 
     packagemanagers = list(commands.keys())
@@ -125,10 +127,30 @@ def findmanagers():
     
     print(f"\033[0mFound \033[1m{len(installed)} package managers\033[22m (searched through \033[1m{len(packagemanagers)} package managers\033[22m)\033[0m")
 
-    if not packages["flatpak"]:
+    if not packages["flatpak"] and os.name == "posix":
         if {"y": True, "n": False}[input("Flatpak was not found. Do you want to install it? (y/n) :  ")[0].lower()]:
             installpackage("flatpak")
 
+    elif not packages["espm"] and os.name == "posix":
+        if {"y": True, "n": False}[input("ESPM was not found. Do you want to install it? (y/n) :  ")[0].lower()]:
+                print(f"Installing \033[1mESPM\033[0m")
+                os.chdir(f"{os.path.expanduser("~")}/espm/")
+                os.system(f"sudo rm -rf espm")
+                print("Removing old folders")
+                os.system(f"sudo rm -rf ESPM")
+                print(f"Cloning Git repository (https://github.com/Ferriit/ESPM.git)")
+                os.system(f"git clone https://github.com/Ferriit/ESPM.git")
+                os.system(f"sudo mv ESPM espm")
+                os.chdir(f"espm/")
+
+                commands = [
+                    "chmod +x espm.py",
+                    "sudo mv espm.py /usr/local/bin/espm",
+                    "sudo chmod +x /usr/local/bin/espm"
+                ]
+
+                for i in commands:
+                    os.system(i)
 
     if os.name == "posix":
         try:
@@ -148,7 +170,11 @@ def findmanagers():
 
     for manager in managers:
         out = sub.run([list_commands[manager]], shell=True, capture_output=True, text=True)
-        installedpackages[manager] = getpackages(manager, out.stdout)
+        if not manager == "espm":
+            installedpackages[manager] = getpackages(manager, out.stdout)
+        else:
+            #os.system("sudo espm list -json")
+            installedpackages[manager] = list(json.loads(out.stdout).keys())
         packageamount += len(installedpackages[manager])
 
     reordered = {}
@@ -194,7 +220,8 @@ def searchpackage(package):
         "guix": "guix search ",
         "slackpkg": "slackpkg search ",
         "zypper": "zypper search ",
-        "portage": "emerge --search "
+        "portage": "emerge --search ",
+        "espm": "sudo espm search "
     }
 
     try:
@@ -275,7 +302,8 @@ def installpackage(package):
         "guix": "guix package -i ",
         "slackpkg": "slackpkg install ",
         "zypper": "sudo zypper install ",
-        "portage": "sudo emerge "
+        "portage": "sudo emerge ",
+        "espm": "sudo espm install "
     }
 
     print(f"Please choose a package manager to install \"{package}\" with")
@@ -341,7 +369,8 @@ def removepackage(package):
         "guix": "guix package --remove ",
         "slackpkg": "slackpkg remove ",
         "zypper": "zypper remove ",
-        "portage": "emerge --unmerge "
+        "portage": "emerge --unmerge ",
+        "espm": "sudo espm uninstall "
     }
 
     if os.name == "posix":
@@ -391,7 +420,8 @@ def flagstopackage(flags: list[str]):
         "-guix": "guix",
         "-slack": "slackpkg",
         "-zypper": "zypper",
-        "-portage": "portage"
+        "-portage": "portage",
+        "-espm": "espm"
     }
 
     All = list(packageflags.values())[2:]
@@ -440,7 +470,8 @@ def update(packagemanagerflags: list[str]):
         "guix": "guix package --upgrade",                 # Update command for Guix
         "slackpkg": "slackpkg update && slackpkg upgrade",# Update command for Slackpkg
         "zypper": "sudo zypper refresh && sudo zypper update -y", # Update command for Zypper
-        "portage": "sudo emerge --sync && sudo emerge --update --deep --newuse @world"  # Update command for Portage
+        "portage": "sudo emerge --sync && sudo emerge --update --deep --newuse @world",  # Update command for Portage
+        "espm": "sudo espm upgrade"
     }
 
     toupdate = flagstopackage(packagemanagerflags)
@@ -485,6 +516,7 @@ def show(package):
         "slackpkg": "slackpkg info ",  # Not a direct command, assumes custom alias or script
         "zypper": "zypper info ",
         "portage": "equery meta ",  # 'equery' is part of gentoolkit for querying package metadata
+        "espm": "sudo espm show "
     }
     
     if package in list(installedpackages.keys()):
@@ -551,7 +583,7 @@ def attach(packages: list[str], manager: str):
 
 if __name__ == "__main__":
     global version
-    version = "0.1.1"
+    version = "0.1.2"
     try:
         args = sys.argv[1:]
 
