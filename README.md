@@ -6,6 +6,8 @@ On Linux and MacOS, you need to follow these steps:
      > chmod +x spkg.py
      > 
      > sudo mv spkg.py /usr/local/bin/spkg
+     >
+     > sudo chmod +x /usr/local/bin/spkg
   5. Test it with this command
      > spkg version
 
