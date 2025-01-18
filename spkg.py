@@ -147,7 +147,7 @@ def findmanagers():
                     "chmod +x espm.py",
                     "sudo mv espm.py /usr/local/bin/espm",
                     "sudo chmod +x /usr/local/bin/espm",
-                    "sudo espm reinstall -skip spkg && sudo spkg reload"
+                    "sudo espm reinstall -skip spkg && sudo spkg scan"
                 ]
 
                 for i in installcommands:
@@ -232,7 +232,7 @@ def searchpackage(package):
             packagemanagers = json.loads(open(f"{os.getenv("APPDATA")}/spkg/managers.json", "r").read())
 
     except FileNotFoundError:
-        print("\033[33;1mWarning:\033[0m Package Manager tracking file not found, creating new one and reloading Package Managers.")
+        print("\033[33;1mWarning:\033[0m Package Manager tracking file not found, creating new one and scanning Package Managers.")
         findmanagers()
         if os.name == "posix":
             packagemanagers = json.loads(open(f"{os.path.expanduser("~")}/spkg/managers.json", "r").read())
@@ -603,7 +603,7 @@ if __name__ == "__main__":
             for i in args:   
                 searchpackage(i)
     
-        elif args[0] == "reload":
+        elif args[0] == "scan":
             findmanagers()
 
         elif args[0] == "version":
@@ -642,8 +642,8 @@ search: Searches through all package managers to find a match for you. Requires 
     > sudo spkg search <package>
 
 
-reload: Updates the list of known package managers. Required sudo privileges on Unix. Has to be run on install of SPKG or any other package managers.
-    > sudo spkg reload
+scan: Updates the list of known package managers. Required sudo privileges on Unix. Has to be run on install of SPKG or any other package managers.
+    > sudo spkg scan
 
 
 version: Prints the version of SPKG you're using.
