@@ -43,7 +43,7 @@ def getpackages(package_manager, output):
 
     except Exception as e:
         if os.name == "posix":
-            managers = open(f"{os.path.expanduser("~")}/spkg/managers.json", "r").read()
+            managers = open(f"{os.path.expanduser('~')}/spkg/managers.json", "r").read()
         elif os.name == "nt":
             managers = open(f"{os.getenv("APPDATA")}/spkg/managers.json", "r").read()
         
@@ -134,7 +134,7 @@ def findmanagers():
     elif not packages["espm"] and os.name == "posix":
         if {"y": True, "n": False}[input("ESPM was not found. Do you want to install it? (y/n) :  ")[0].lower()]:
                 print(f"Installing \033[1mESPM\033[0m")
-                os.chdir(f"{os.path.expanduser("~")}/espm/")
+                os.chdir(f"{os.path.expanduser('~')}/espm/")
                 os.system(f"sudo rm -rf espm")
                 print("Removing old folders")
                 os.system(f"sudo rm -rf ESPM")
@@ -155,10 +155,10 @@ def findmanagers():
 
     if os.name == "posix":
         try:
-            open(f"{os.path.expanduser("~")}/spkg/managers.json", "w").write(json.dumps({"packages": packages, "installed": installed}, indent=True))
+            open(f"{os.path.expanduser('~')}/spkg/managers.json", "w").write(json.dumps({"packages": packages, "installed": installed}, indent=True))
         except FileNotFoundError:
-            os.system(f"sudo mkdir {os.path.expanduser("~")}/spkg")
-            open(f"{os.path.expanduser("~")}/spkg/managers.json", "w").write(json.dumps({"packages": packages, "installed": installed}, indent=True))
+            os.system(f"sudo mkdir {os.path.expanduser('~')}/spkg")
+            open(f"{os.path.expanduser('~')}/spkg/managers.json", "w").write(json.dumps({"packages": packages, "installed": installed}, indent=True))
     elif os.name == "nt":
         open(f"{os.getenv("APPDATA")}/spkg/managers.json", "w").write(json.dumps({"packages": packages, "installed": installed}, indent=True))
     
@@ -189,7 +189,7 @@ def findmanagers():
     installedpackages["amount"] = packageamount
 
     if os.name == "posix":
-        open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write(json.dumps(reordered, indent=True))
+        open(f"{os.path.expanduser('~')}/spkg/installed.json", "w").write(json.dumps(reordered, indent=True))
     elif os.name == "nt":
         open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write(json.dumps(reordered, indent=True))
 
@@ -227,7 +227,7 @@ def searchpackage(package):
 
     try:
         if os.name == "posix":
-            packagemanagers = json.loads(open(f"{os.path.expanduser("~")}/spkg/managers.json", "r").read())
+            packagemanagers = json.loads(open(f"{os.path.expanduser('~')}/spkg/managers.json", "r").read())
         elif os.name == "nt":
             packagemanagers = json.loads(open(f"{os.getenv("APPDATA")}/spkg/managers.json", "r").read())
 
@@ -235,7 +235,7 @@ def searchpackage(package):
         print("\033[33;1mWarning:\033[0m Package Manager tracking file not found, creating new one and scanning Package Managers.")
         findmanagers()
         if os.name == "posix":
-            packagemanagers = json.loads(open(f"{os.path.expanduser("~")}/spkg/managers.json", "r").read())
+            packagemanagers = json.loads(open(f"{os.path.expanduser('~')}/spkg/managers.json", "r").read())
         elif os.name == "nt":
             packagemanagers = json.loads(open(f"{os.getenv("APPDATA")}/spkg/managers.json", "r").read())
 
@@ -257,19 +257,19 @@ def searchpackage(package):
 def installpackage(package):
     try:
         if os.name == "posix":
-            installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
+            installedpackages = json.loads(open(f"{os.path.expanduser('~')}/spkg/installed.json", "r").read())
         elif os.name == "nt":
             installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
     except FileNotFoundError:
         print("\033[33;1mWarning:\033[0m Installation tracking file not found, creating new one.")
         if os.name == "posix":
-            open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write("{}")
+            open(f"{os.path.expanduser('~')}/spkg/installed.json", "w").write("{}")
         elif os.name == "nt":
             open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write("{}")
         
         if os.name == "posix":
-            installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
+            installedpackages = json.loads(open(f"{os.path.expanduser('~')}/spkg/installed.json", "r").read())
         elif os.name == "nt":
             installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
@@ -328,10 +328,10 @@ def installpackage(package):
 
     if os.name == "posix":
         try:
-            installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
+            installedpackages = json.loads(open(f"{os.path.expanduser('~')}/spkg/installed.json", "r").read())
         except FileNotFoundError:
-            open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write("{}")
-            installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
+            open(f"{os.path.expanduser('~')}/spkg/installed.json", "w").write("{}")
+            installedpackages = json.loads(open(f"{os.path.expanduser('~')}/spkg/installed.json", "r").read())
     elif os.name == "nt":
         try:
             installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
@@ -342,7 +342,7 @@ def installpackage(package):
     installedpackages[package] = available[choice]
 
     if os.name == "posix":
-        open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.path.expanduser('~')}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
     elif os.name == "nt":
         open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
 
@@ -375,7 +375,7 @@ def removepackage(package):
     }
 
     if os.name == "posix":
-        installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
+        installedpackages = json.loads(open(f"{os.path.expanduser('~')}/spkg/installed.json", "r").read())
     elif os.name == "nt":
         installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
@@ -388,7 +388,7 @@ def removepackage(package):
     del installedpackages[package]
 
     if os.name == "posix":
-        open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.path.expanduser('~')}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
     elif os.name == "nt":
         open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
     
@@ -433,7 +433,7 @@ def flagstopackage(flags: list[str]):
         result.append(packageflags[i])
         if i == "-installed":
             if os.name == "posix":
-                packagemanagers = json.loads(open(f"{os.path.expanduser("~")}/spkg/managers.json", "r").read())
+                packagemanagers = json.loads(open(f"{os.path.expanduser('~')}/spkg/managers.json", "r").read())
             elif os.name == "nt":
                 packagemanagers = json.loads(open(f"{os.getenv("APPDATA")}/spkg/managers.json", "r").read())
 
@@ -489,7 +489,7 @@ def update(packagemanagerflags: list[str]):
 
 def show(package):
     if os.name == "posix":
-        installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
+        installedpackages = json.loads(open(f"{os.path.expanduser('~')}/spkg/installed.json", "r").read())
     elif os.name == "nt":
         installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
@@ -532,7 +532,7 @@ def show(package):
 
 def detach(packages: list[str]):
     if os.name == "posix":
-        installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
+        installedpackages = json.loads(open(f"{os.path.expanduser('~')}/spkg/installed.json", "r").read())
     elif os.name == "nt":
         installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
@@ -554,14 +554,14 @@ def detach(packages: list[str]):
         sys.exit()
 
     if os.name == "posix":
-        open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.path.expanduser('~')}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
     elif os.name == "nt":
         open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
 
 
 def attach(packages: list[str], manager: str):
     if os.name == "posix":
-        installedpackages = json.loads(open(f"{os.path.expanduser("~")}/spkg/installed.json", "r").read())
+        installedpackages = json.loads(open(f"{os.path.expanduser('~')}/spkg/installed.json", "r").read())
     elif os.name == "nt":
         installedpackages = json.loads(open(f"{os.getenv("APPDATA")}/spkg/installed.json", "r").read())
 
@@ -569,7 +569,7 @@ def attach(packages: list[str], manager: str):
         installedpackages[i] = flagstopackage([manager])[0]
 
     if os.name == "posix":
-        open(f"{os.path.expanduser("~")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
+        open(f"{os.path.expanduser('~')}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
     elif os.name == "nt":
         open(f"{os.getenv("APPDATA")}/spkg/installed.json", "w").write(json.dumps(installedpackages, indent=True))
 
